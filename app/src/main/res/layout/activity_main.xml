@@ -42,20 +42,21 @@
         app:layout_constraintGuide_percent="0.5"/>
 
     <ImageView
+        android:visibility="invisible"
         android:id="@+id/imageView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintLeft_toRightOf="@id/guideline11"
         app:layout_constraintRight_toLeftOf="@id/guideline12"
-        app:layout_constraintBottom_toTopOf="@id/middle"
+        app:layout_constraintBottom_toTopOf="@id/guideline10"
         app:layout_constraintTop_toBottomOf="@id/guideline9"/>
 
-    <VideoView
+    <VideoView  android:visibility="invisible"
         android:id="@+id/videoView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintLeft_toRightOf="@id/guideline11"
         app:layout_constraintRight_toLeftOf="@id/guideline12"
         app:layout_constraintBottom_toTopOf="@id/guideline10"
-        app:layout_constraintTop_toBottomOf="@id/middle" />
+        app:layout_constraintTop_toBottomOf="@id/guideline9" />
 </androidx.constraintlayout.widget.ConstraintLayout>
