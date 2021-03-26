@@ -1,4 +1,4 @@
- package com.example.tablookuser;
+package com.example.tablookuser;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView imageView;
     private VideoView videoView;
     private Uri imageUri, videoUri;
-    private ArrayList<String> imageIds, videoIds, oldImageIds, oldVideoIds;
+    private ArrayList<String> imageIds, videoIds, oldImageIds, oldVideoIds,databaseImageArrayList,databaseVideoArrayList;
     private ArrayList<Media> mediaArrayList;
     private Button contact;
     private Media currentMedia;
@@ -81,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
         videoView = findViewById(R.id.videoView);
         imageView = findViewById(R.id.imageView);
         videoView = findViewById(R.id.videoView);
+        databaseImageArrayList = new ArrayList<>();
+        databaseVideoArrayList = new ArrayList<>();
         imageIds = new ArrayList<>();
         videoIds = new ArrayList<>();
         oldImageIds = new ArrayList<>();
@@ -89,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         contact.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-               
+
             }
         });
 
@@ -230,7 +232,25 @@ public class MainActivity extends AppCompatActivity {
                 play();
             }
         }else{
-            play();
+
+            new java.util.Timer().schedule(
+                    new java.util.TimerTask() {
+                        @Override
+                        public void run() {
+                            Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
+                            Runnable myRunnable = new Runnable() {
+                                @Override
+                                public void run() {
+                                    imageView.setVisibility(View.INVISIBLE);
+                                    videoView.setVisibility(View.INVISIBLE);
+                                }
+                            };
+                            mainHandler.post(myRunnable);
+                            play();
+                        }
+                    },
+                    5000
+            );
         }
     }
 
@@ -290,6 +310,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void getImagesFromStorage()
     {
+        databaseImageArrayList.clear();
         imageIds.clear();
         firebaseFirestore.collection("images")
                 .get()
@@ -300,7 +321,9 @@ public class MainActivity extends AppCompatActivity {
                             for (QueryDocumentSnapshot document : task.getResult())
                             {
                                 String name = document.getId();
+                                databaseImageArrayList.add(name);
                                 if (!oldImageIds.contains(name)) imageIds.add(name);
+                                System.out.println(oldImageIds + "oldImageIds");
                             }
                             for (String x : imageIds )
                             {
@@ -340,15 +363,38 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                 });
                             }
+
+
+                            if(!mediaArrayList.isEmpty()){
+                                if(databaseImageArrayList.isEmpty()){
+                                    for(int x = 0 ; x < mediaArrayList.size() ; x++){
+                                        System.out.println(mediaArrayList + "mediaArrayList");
+                                        System.out.println(databaseImageArrayList + "mediaArrayListDatabase");
+                                        if(mediaArrayList.get(x).type == 0){
+                                            mediaArrayList.remove(x);
+                                        }
+                                    }
+                                }else{
+                                    for(int i = 0 ; i < mediaArrayList.size() ; i++){
+                                        System.out.println(mediaArrayList + "ananınamı1");
+                                        System.out.println(databaseImageArrayList + "ananınamı2");
+                                        if(!databaseImageArrayList.contains(mediaArrayList.get(i).id) && mediaArrayList.get(i).type == 0){
+                                            mediaArrayList.remove(i);
+                                        }
+                                    }
+                                }
+
+                            }
                         }
                     }
                 });
 
-
+        System.out.println(mediaArrayList + "getImage");
     }
 
     public void getVideosFromStorage()
     {
+        databaseVideoArrayList.clear();
         videoIds.clear();
         firebaseFirestore.collection("videos")
                 .get()
@@ -356,22 +402,20 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onComplete(@NonNull Task<QuerySnapshot> task) {
                         if (task.isSuccessful()) {
-                            for (QueryDocumentSnapshot document : task.getResult())
-                            {
+                            for (QueryDocumentSnapshot document : task.getResult()) {
                                 String name = document.getId();
-                                if(!oldVideoIds.contains(name)) videoIds.add(name);
+                                databaseVideoArrayList.add(name);
+                                if (!oldVideoIds.contains(name)) videoIds.add(name);
                             }
-                            for (String x : videoIds )
-                            {
+                            for (String x : videoIds) {
                                 oldVideoIds.add(x);
                                 String link = "videos/" + x;
                                 StorageReference newRef = storageReference.child(link);
                                 File localFile = null;
-                                try
-                                {
+                                try {
                                     localFile = File.createTempFile(x, ".mp4");
                                     videoUri = Uri.fromFile(localFile);
-                                    Media newVideo = new Media(x,1,videoUri);
+                                    Media newVideo = new Media(x, 1, videoUri);
 
                                     DocumentReference documentReference = firebaseFirestore.collection("videos").document(newVideo.id);
                                     documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
@@ -384,28 +428,44 @@ public class MainActivity extends AppCompatActivity {
                                         }
                                     });
 
-                                }
-                                catch (IOException e)
-                                {
+                                } catch (IOException e) {
                                     e.printStackTrace();
                                 }
                                 newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
 
                                     @Override
-                                    public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot)
-                                    {
+                                    public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
                                         System.out.println("Video is downloaded.");
-                                        videoCounter ++;
+                                        videoCounter++;
                                     }
 
                                 }).addOnFailureListener(new OnFailureListener() {
                                     @Override
-                                    public void onFailure(@NonNull Exception exception)
-                                    {
+                                    public void onFailure(@NonNull Exception exception) {
                                         System.out.println("Video cannot be downloaded.");
                                     }
 
                                 });
+
+                    }
+                            if(!mediaArrayList.isEmpty()){
+                                if(databaseVideoArrayList.isEmpty()){
+                                    for(int x = 0 ; x < mediaArrayList.size() ; x++){
+                                        System.out.println(mediaArrayList + "mediaArrayVideo");
+                                        System.out.println(databaseVideoArrayList + "mediaArrayVideoDatabase");
+                                        if(mediaArrayList.get(x).type == 1){
+                                            mediaArrayList.remove(x);
+                                        }
+                                    }
+                                }else{
+                                    for(int i = 0 ; i < mediaArrayList.size() ; i++){
+                                        System.out.println(mediaArrayList + "mediaArrayVideo");
+                                        System.out.println(databaseVideoArrayList + "mediaArrayVideoDatabase");
+                                        if(!databaseVideoArrayList.contains(mediaArrayList.get(i).id) && mediaArrayList.get(i).type == 1){
+                                            mediaArrayList.remove(i);
+                                        }
+                                    }
+                                }
 
                             }
                         } else {
