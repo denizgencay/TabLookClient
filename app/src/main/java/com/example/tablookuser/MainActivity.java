@@ -1,4 +1,4 @@
-package com.example.tablookuser;
+ package com.example.tablookuser;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,6 +12,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.BatteryManager;
@@ -24,6 +25,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 import android.widget.VideoView;
@@ -32,6 +34,8 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -42,6 +46,7 @@ import com.google.firebase.storage.StorageReference;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Timer;
 
 public class MainActivity extends AppCompatActivity {
@@ -54,21 +59,24 @@ public class MainActivity extends AppCompatActivity {
     private Uri imageUri, videoUri;
     private ArrayList<String> imageIds, videoIds, oldImageIds, oldVideoIds;
     private ArrayList<Media> mediaArrayList;
-    private Timer timer = new Timer();
-    boolean isImageShowing = false;
+    private Button contact;
+    private Media currentMedia;
     int counter = 0;
-
+    int videoCounter = 0;
+    long duration = 10000;
+    boolean isFirstTime = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        getWindow().getDecorView().setSystemUiVisibility(8);
         setContentView(R.layout.activity_main);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         firebaseFirestore = FirebaseFirestore.getInstance();
         firebaseStorage = FirebaseStorage.getInstance();
         storageReference = firebaseStorage.getReference();
+        contact = findViewById(R.id.contact);
         imageView = findViewById(R.id.imageView);
         videoView = findViewById(R.id.videoView);
         imageView = findViewById(R.id.imageView);
@@ -78,18 +86,39 @@ public class MainActivity extends AppCompatActivity {
         oldImageIds = new ArrayList<>();
         oldVideoIds = new ArrayList<>();
         mediaArrayList = new ArrayList<>();
+        contact.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+               
+            }
+        });
 
         Timer t = new java.util.Timer();
         t.schedule(
                 new java.util.TimerTask() {
                     @Override
                     public void run() {
+                        if(isFirstTime){
+                            isFirstTime = false;
+                            play();
+                        }
+                    }
+                },
+                10000,10000
+        );
+
+        t.schedule(
+                new java.util.TimerTask() {
+                    @Override
+                    public void run() {
+
                         getImagesFromStorage();
                         getVideosFromStorage();
                     }
                 },
-                0,5000
+                5000,10000
         );
+
         t.schedule(
                 new java.util.TimerTask() {
                     @Override
@@ -97,20 +126,21 @@ public class MainActivity extends AppCompatActivity {
                         BroadcastReceiver receiver = new BroadcastReceiver() {
                             public void onReceive(Context context, Intent intent) {
                                 int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-                                if (plugged == BatteryManager.BATTERY_PLUGGED_AC) {
-                                    System.out.println("babam1");
+                                if (plugged == BatteryManager.BATTERY_PLUGGED_AC)
+                                {
                                     unLock();
 
-                                } else if (plugged == BatteryManager.BATTERY_PLUGGED_USB) {
-
+                                }
+                                else if (plugged == BatteryManager.BATTERY_PLUGGED_USB)
+                                {
                                     unLock();
-
-                                } else if (plugged == 0) {
-                                    System.out.println("babam2");
+                                }
+                                else if (plugged == 0)
+                                {
                                     lock();
-
-                                } else {
-
+                                }
+                                else
+                                {
                                     Toast.makeText(getApplicationContext(),"Non",Toast.LENGTH_LONG).show();
                                 }
                             }
@@ -121,7 +151,99 @@ public class MainActivity extends AppCompatActivity {
                 },
                 0,10000
         );
-        if (!videoView.isPlaying()) play();
+    }
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if(!hasFocus) {
+            Intent closeDialog = new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
+            sendBroadcast(closeDialog);
+        }
+    }
+
+
+    public void play(){
+
+        ArrayList<Media> mediaArrayListCopy = mediaArrayList;
+        if (!mediaArrayListCopy.isEmpty())
+        {
+            Media media = mediaArrayListCopy.get(counter);
+            if (media.type == 0)
+            {
+                Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
+                Runnable myRunnable = new Runnable() {
+
+                    @Override
+                    public void run() {
+                        imageView.setImageURI(media.mediaUri);
+                        videoView.setVisibility(View.INVISIBLE);
+                        imageView.setVisibility(View.VISIBLE);
+                        new java.util.Timer().schedule(
+                                new java.util.TimerTask() {
+                                    @Override
+                                    public void run() {
+                                        skip();
+                                        play();
+                                    }
+                                },
+                                duration
+                        );
+                    }
+                };
+                mainHandler.post(myRunnable);
+            }
+            else if (media.type == 1 && videoCounter > 0)
+            {
+                Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
+                Runnable myRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        imageView.setVisibility(View.INVISIBLE);
+                        videoView.setVisibility(View.VISIBLE);
+                        videoView.setVideoURI(media.mediaUri);
+                        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                        retriever.setDataSource(getApplicationContext(),media.mediaUri);
+                        long secondDuration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+                        retriever.release();
+
+                        videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                            @Override
+                            public void onPrepared(MediaPlayer mp) {
+
+                                videoView.start();
+                                new java.util.Timer().schedule(
+                                        new java.util.TimerTask() {
+                                            @Override
+                                            public void run() {
+                                                skip();
+                                                play();
+                                            }
+                                        },
+                                        secondDuration
+                                );
+                            }
+                        });
+                    }
+                };
+                mainHandler.post(myRunnable);
+            }else{
+                skip();
+                play();
+            }
+        }else{
+            play();
+        }
+    }
+
+    private void skip()
+    {
+        if(counter + 1 < mediaArrayList.size())
+        {
+            counter ++;
+        }
+        else
+        {
+            counter = 0;
+        }
     }
 
     private void unLock(){
@@ -137,14 +259,13 @@ public class MainActivity extends AppCompatActivity {
         if (screenLock.isHeld()) {
             screenLock.release();
         }
-        
+
         KeyguardManager mKeyGuardManager = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         if (mKeyGuardManager.inKeyguardRestrictedInputMode()) {
             KeyguardManager.KeyguardLock keyguardLock = mKeyGuardManager.newKeyguardLock(getLocalClassName());
             keyguardLock.disableKeyguard();
         }
     }
-
 
     private void lock() {
         PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
@@ -162,70 +283,63 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(
                         DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).putExtra(
                         DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin);
-                        this.startActivity(intent);
+                this.startActivity(intent);
             }
         }
     }
 
     private void getImagesFromStorage()
     {
+        imageIds.clear();
         firebaseFirestore.collection("images")
                 .get()
                 .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                     @Override
                     public void onComplete(@NonNull Task<QuerySnapshot> task) {
                         if (task.isSuccessful()) {
-                            for (QueryDocumentSnapshot document : task.getResult()) {
+                            for (QueryDocumentSnapshot document : task.getResult())
+                            {
                                 String name = document.getId();
-                                imageIds.add(name);
+                                if (!oldImageIds.contains(name)) imageIds.add(name);
                             }
-                            for (String x : imageIds ) {
-                                if (!oldImageIds.contains(x))
+                            for (String x : imageIds )
+                            {
+                                oldImageIds.add(x);
+                                String link = "images/" + x;
+                                StorageReference newRef = storageReference.child(link);
+                                File localFile = null;
+                                try
                                 {
-                                    String link = "images/" + x;
-                                    StorageReference newRef = storageReference.child(link);
-
-                                    File localFile = null;
-                                    try
-                                    {
-                                        localFile = File.createTempFile(x, ".jpg");
-                                        imageUri = Uri.fromFile(localFile);
-                                        System.out.println(localFile.toString() + "buaraya");
-                                    }
-                                    catch (IOException e)
-                                    {
-                                        e.printStackTrace();
-                                    }
-                                    newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                    localFile = File.createTempFile(x, ".jpg");
+                                    imageUri = Uri.fromFile(localFile);
+                                    Media newImage = new Media(x,0,imageUri);
+                                    DocumentReference documentReference = firebaseFirestore.collection("images").document(newImage.id);
+                                    documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                                         @Override
-                                        public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                                            System.out.println("Image is downloaded.");
-                                            Media newImage = new Media(x,0,imageUri);
+                                        public void onSuccess(DocumentSnapshot documentSnapshot) {
+                                            String phoneNumber = documentSnapshot.get("name").toString();
+                                            newImage.setPhoneNumber(phoneNumber);
                                             mediaArrayList.add(newImage);
                                         }
-                                    }).addOnFailureListener(new OnFailureListener() {
-                                        @Override
-                                        public void onFailure(@NonNull Exception exception) {
-                                            System.out.println("Image cannot be downloaded.");
-                                        }
                                     });
-                                }
-                            }
-                            System.out.println(imageIds + "imageIdArray");
-                            if (!oldImageIds.containsAll(imageIds))
-                            {
-                                for (String newS : imageIds) {
-                                    if (!oldImageIds.contains(newS))
-                                    {
-                                        oldImageIds.add(newS);
-                                    }
-                                }
 
+                                }
+                                catch (IOException e)
+                                {
+                                    e.printStackTrace();
+                                }
+                                newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                    @Override
+                                    public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                        System.out.println("Image is downloaded.");
+                                    }
+                                }).addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception exception) {
+                                        System.out.println("Image cannot be downloaded.");
+                                    }
+                                });
                             }
-                            imageIds.clear();
-                            System.out.println(oldImageIds + "oldImagesArray");
-                        } else {
-                            Log.d("ana","hata");
                         }
                     }
                 });
@@ -235,189 +349,83 @@ public class MainActivity extends AppCompatActivity {
 
     public void getVideosFromStorage()
     {
+        videoIds.clear();
         firebaseFirestore.collection("videos")
                 .get()
                 .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                     @Override
                     public void onComplete(@NonNull Task<QuerySnapshot> task) {
                         if (task.isSuccessful()) {
-                            for (QueryDocumentSnapshot document : task.getResult()) {
+                            for (QueryDocumentSnapshot document : task.getResult())
+                            {
                                 String name = document.getId();
-                                videoIds.add(name);
+                                if(!oldVideoIds.contains(name)) videoIds.add(name);
                             }
-                            for (String x : videoIds ) {
-                                if (!oldVideoIds.contains(x))
+                            for (String x : videoIds )
+                            {
+                                oldVideoIds.add(x);
+                                String link = "videos/" + x;
+                                StorageReference newRef = storageReference.child(link);
+                                File localFile = null;
+                                try
                                 {
-                                    String link = "videos/" + x;
-                                    StorageReference newRef = storageReference.child(link);
+                                    localFile = File.createTempFile(x, ".mp4");
+                                    videoUri = Uri.fromFile(localFile);
+                                    Media newVideo = new Media(x,1,videoUri);
 
-                                    File localFile = null;
-                                    try {
-                                        localFile = File.createTempFile(x, ".mp4");
-                                        videoUri = Uri.fromFile(localFile);
-                                        System.out.println(localFile.toString() + "buaraya");
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
-                                    newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                    DocumentReference documentReference = firebaseFirestore.collection("videos").document(newVideo.id);
+                                    documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                                         @Override
-                                        public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                                            System.out.println("Video is downloaded.");
-                                            Media newImage = new Media(x,1,videoUri);
-                                            mediaArrayList.add(newImage);
-                                        }
-                                    }).addOnFailureListener(new OnFailureListener() {
-                                        @Override
-                                        public void onFailure(@NonNull Exception exception) {
-                                            System.out.println("Video cannot be downloaded.");
+                                        public void onSuccess(DocumentSnapshot documentSnapshot) {
+                                            String phoneNumber = documentSnapshot.get("name").toString();
+                                            newVideo.setPhoneNumber(phoneNumber);
+                                            mediaArrayList.add(newVideo);
+
                                         }
                                     });
+
                                 }
-                            }
-                            System.out.println(videoIds + "videoIdArray");
-                            if (!oldVideoIds.containsAll(videoIds))
-                            {
-                                for (String newV : videoIds) {
-                                    if (!oldVideoIds.contains(newV))
+                                catch (IOException e)
+                                {
+                                    e.printStackTrace();
+                                }
+                                newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+
+                                    @Override
+                                    public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot)
                                     {
-                                        oldVideoIds.add(newV);
+                                        System.out.println("Video is downloaded.");
+                                        videoCounter ++;
                                     }
-                                }
+
+                                }).addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception exception)
+                                    {
+                                        System.out.println("Video cannot be downloaded.");
+                                    }
+
+                                });
 
                             }
-                            videoIds.clear();
-                            System.out.println(oldVideoIds + "oldVideosArray");
                         } else {
                             Log.d("ana","hata");
                         }
                     }
                 });
     }
-    public void play(){
 
-        ArrayList<Media> mediaArrayListCopy = mediaArrayList;
-
-
-        new CountDownTimer(5000, 1000) { // 5000 = 5 sec
-
-            public void onTick(long millisUntilFinished) {
-            }
-
-            public void onFinish() {
-                System.out.println("burdaFinish");
-
-                Media media = mediaArrayListCopy.get(counter);
-                if (media.type == 0)
-                {
-                    videoView.setVisibility(View.INVISIBLE);
-                    Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
-                    Runnable myRunnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            imageView.setVisibility(View.VISIBLE);
-                            imageView.setImageURI(media.mediaUri);
-                            System.out.println("burdaSetImage");
-                            skip();
-                            play();
-
-                        }
-                    };
-                    mainHandler.post(myRunnable);
-
-                }
-                else if (media.type == 1)
-                {
-                    videoView.setVisibility(View.VISIBLE);
-                    imageView.setVisibility(View.INVISIBLE);
-                    Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
-                    Runnable myRunnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            videoView.setVideoURI(media.mediaUri);
-
-                            videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                                @Override
-                                public void onPrepared(MediaPlayer mp) {
-                                    mp.setLooping(true);
-                                    //videoView.setVisibility(View.VISIBLE);
-                                    System.out.println("burdaVideo");
-                                    imageView.setVisibility(View.INVISIBLE);
-                                    videoView.start();
-                                    skip();
-                                    play();
-                                }
-                            });
-                        }
-                    };
-                    mainHandler.post(myRunnable);
-                }
-            }
-        }.start();
-    }
-    private void skip(){
-        if(counter + 1 < mediaArrayList.size()){
-            counter ++;
-        }else{
-            counter = 0;
-        }
-    }
-
-
-    private void showMedia() {
-        if(!mediaArrayList.equals(null))
+    public void printArray(String location,ArrayList<Media> array)
+    {
+        if (!array.isEmpty())
         {
-
-            System.out.println(mediaArrayList.size()+ "Size:");
-            ArrayList<Media> mediaArrayListCopy = mediaArrayList;
-            for (int i = 0 ; i < mediaArrayListCopy.size() ; i++)
+            for (int i = 0; i < array.size() ; i++)
             {
-                Media media = mediaArrayListCopy.get(i);
-                if (media.type == 0)
-                {
-                    Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
-                    Runnable myRunnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            imageView.setImageURI(media.mediaUri);
-                            isImageShowing = true;
+                System.out.println(array.get(i).mediaUri+location+"uri");
 
-                        }
-                    };
-                    mainHandler.post(myRunnable);
-
-                    break;
-                }
-                else if (media.type == 1)
-                {
-                    Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
-                    Runnable myRunnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            videoView.setVideoURI(media.mediaUri);
-                            System.out.println("geldiVideo");
-                            videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                                @Override
-                                public void onPrepared(MediaPlayer mp) {
-                                    mp.setLooping(true);
-                                    videoView.start();
-                                }
-                            });
-                        }
-                    };
-                    mainHandler.post(myRunnable);
-                }
             }
-//            if(isImageShowing == true){
-//                try {
-//                    TimeUnit.SECONDS.sleep(10000);
-//                    System.out.println("geldiSleep");
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//                System.out.println("geldi");
-//                showMedia();
-//            }
         }
 
     }
+
 }

@@ -59,4 +59,13 @@
         app:layout_constraintRight_toLeftOf="@id/guideline12"
         app:layout_constraintBottom_toTopOf="@id/guideline10"
         app:layout_constraintTop_toBottomOf="@id/guideline9" />
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:id="@+id/contact"
+        android:text="Contact"
+        app:layout_constraintLeft_toRightOf="@id/guideline11"
+        app:layout_constraintRight_toLeftOf="@id/guideline12"
+        app:layout_constraintBottom_toTopOf="@id/guideline10"
+        />
 </androidx.constraintlayout.widget.ConstraintLayout>
