@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private Media currentMedia;
     int counter = 0;
     int videoCounter = 0;
-    long duration = 10000;
+    long duration = 60000;
     boolean isFirstTime = true;
 
     @Override
@@ -75,9 +75,6 @@ public class MainActivity extends AppCompatActivity {
         getWindow().getDecorView().setSystemUiVisibility(8);
         setContentView(R.layout.activity_main);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        System.out.println(getFilesDir().toString() + "fileeDirec" );
-        System.out.println(getCacheDir().toString() + "fileeCache" );
-        System.out.println(getExternalCacheDir().toString() + "fileeExtCache" );
         firebaseFirestore = FirebaseFirestore.getInstance();
         firebaseStorage = FirebaseStorage.getInstance();
         storageReference = firebaseStorage.getReference();
@@ -143,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         BroadcastReceiver receiver = new BroadcastReceiver() {
-                            public void onReceive(Context context, Intent intent) {
+                            public void onReceive(Context context, Intent intent) {                                             //Controling the power
                                 int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
                                 if (plugged == BatteryManager.BATTERY_PLUGGED_AC)
                                 {
@@ -180,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public void play(){
+    public void play(){         //Setting media to imageView and videoView
 
         ArrayList<Media> mediaArrayListCopy = mediaArrayList;
         if (!mediaArrayListCopy.isEmpty())
@@ -188,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
             Media media = mediaArrayListCopy.get(counter);
             currentMedia = media;
             System.out.println(currentMedia.mediaUri + "currentMediaUri");
-            if (media.type == 0)
+            if (media.type == 0)        //Media type is image
             {
                 Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
                 Runnable myRunnable = new Runnable() {
@@ -203,15 +200,15 @@ public class MainActivity extends AppCompatActivity {
                                 new java.util.TimerTask() {
                                     @Override
                                     public void run() {
-                                        skip();
-                                        play();
+                                        skip();     // Chancing mediaArrayList index for getting other midea file
+                                        play();     // The function runs recursively for the slideView
                                     }
                                 },
                                 duration
                         );
                     }
                 };
-                mainHandler.post(myRunnable);
+                mainHandler.post(myRunnable);       //To control views on main thread
             }
             else if (media.type == 1 && videoCounter > 0)
             {
@@ -219,14 +216,14 @@ public class MainActivity extends AppCompatActivity {
                 Runnable myRunnable = new Runnable() {
                     @Override
                     public void run() {
-                        imageView.setVisibility(View.INVISIBLE);
-                        videoView.setVisibility(View.VISIBLE);
-                        videoView.setVideoURI(media.mediaUri);
-                        System.out.println(media.mediaUri + "mediaUriBurda");
-                        contact.setEnabled(true);
+                        imageView.setVisibility(View.INVISIBLE);    //To show videoView
+                        videoView.setVisibility(View.VISIBLE);      //To show videoView
+                        videoView.setVideoURI(media.mediaUri);      //Giving videoView to video path in internal storage.
+                        contact.setEnabled(true);                   //To get add statistics
                         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
                         retriever.setDataSource(getApplicationContext(),media.mediaUri);
-                        long secondDuration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+                        long secondDuration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)); //It takes the video time to show the video image
+
                         retriever.release();
 
                         videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -288,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void unLock(){
+    private void unLock(){      // Unlocks screen when the power is on
         Window window = this.getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
         window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
@@ -309,7 +306,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void lock() {
+    private void lock() {      // Locks screen when the power is off
         PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
         if (pm.isInteractive()) {
             DevicePolicyManager policy = (DevicePolicyManager)
@@ -319,7 +316,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (SecurityException ex) {
                 Toast.makeText(
                         this,
-                        "Yönetici yetkisi vermelisin",
+                        "Yönetici yetkisi vermelisiniz",
                         Toast.LENGTH_LONG).show();
                 ComponentName admin = new ComponentName(getApplicationContext(), AdminReceiver.class);
                 Intent intent = new Intent(
@@ -353,7 +350,7 @@ public class MainActivity extends AppCompatActivity {
                                 String path = x + ".jpg";
                                 String link = "images/" + x;
                                 StorageReference newRef = storageReference.child(link);
-                                File localFile = new File(getFilesDir(),path);
+                                File localFile = new File(getFilesDir(),path);          //Creating file directory in internal storage
                                 imageUri = Uri.fromFile(localFile);
                                 System.out.println(imageUri + "localFileImageUri");
                                 Media newImage = new Media(x,0,imageUri);
@@ -417,8 +414,6 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
-
-        System.out.println(mediaArrayList + "getImage");
     }
 
     public void getVideosFromStorage()
@@ -441,7 +436,7 @@ public class MainActivity extends AppCompatActivity {
                                 String path = x + ".mp4";
                                 String link = "videos/" + x;
                                 StorageReference newRef = storageReference.child(link);
-                                File localFile = new File(getFilesDir(),path);
+                                File localFile = new File(getFilesDir(),path);      //Creating file directory in internal storage
                                 videoUri = Uri.fromFile(localFile);
                                 Media newVideo = new Media(x, 1, videoUri);
                                 if(!localFile.exists()){
