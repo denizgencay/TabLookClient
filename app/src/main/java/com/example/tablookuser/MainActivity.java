@@ -45,6 +45,7 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -349,6 +350,7 @@ public class MainActivity extends AppCompatActivity {
                                 {
                                     localFile = File.createTempFile(x, ".jpg");
                                     imageUri = Uri.fromFile(localFile);
+                                    System.out.println(imageUri + "localFileImageUri");
                                     Media newImage = new Media(x,0,imageUri);
                                     DocumentReference documentReference = firebaseFirestore.collection("images").document(newImage.id);
                                     documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
@@ -385,19 +387,20 @@ public class MainActivity extends AppCompatActivity {
                                         System.out.println(mediaArrayList + "mediaArrayList");
                                         System.out.println(databaseImageArrayList + "mediaArrayListDatabase");
                                         if(mediaArrayList.get(x).type == 0){
+                                            deleteFiles(mediaArrayList.get(x).mediaUri);
+                                            System.out.println(mediaArrayList.get(x).mediaUri.toString() + "localFile1");
                                             mediaArrayList.remove(x);
                                         }
                                     }
                                 }else{
                                     for(int i = 0 ; i < mediaArrayList.size() ; i++){
-                                        System.out.println(mediaArrayList + "ananınamı1");
-                                        System.out.println(databaseImageArrayList + "ananınamı2");
                                         if(!databaseImageArrayList.contains(mediaArrayList.get(i).id) && mediaArrayList.get(i).type == 0){
+                                            deleteFiles(mediaArrayList.get(i).mediaUri);
+                                            System.out.println(mediaArrayList.get(i).mediaUri.toString() + "localFile");
                                             mediaArrayList.remove(i);
                                         }
                                     }
                                 }
-
                             }
                         }
                     }
@@ -468,6 +471,7 @@ public class MainActivity extends AppCompatActivity {
                                         System.out.println(mediaArrayList + "mediaArrayVideo");
                                         System.out.println(databaseVideoArrayList + "mediaArrayVideoDatabase");
                                         if(mediaArrayList.get(x).type == 1){
+                                            deleteFiles(mediaArrayList.get(x).mediaUri);
                                             mediaArrayList.remove(x);
                                         }
                                     }
@@ -476,6 +480,7 @@ public class MainActivity extends AppCompatActivity {
                                         System.out.println(mediaArrayList + "mediaArrayVideo");
                                         System.out.println(databaseVideoArrayList + "mediaArrayVideoDatabase");
                                         if(!databaseVideoArrayList.contains(mediaArrayList.get(i).id) && mediaArrayList.get(i).type == 1){
+                                            deleteFiles(mediaArrayList.get(i).mediaUri);
                                             mediaArrayList.remove(i);
                                         }
                                     }
@@ -489,7 +494,7 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-    public void printArray(String location,ArrayList<Media> array)
+    public void printArray(String location, ArrayList<Media> array)
     {
         if (!array.isEmpty())
         {
@@ -501,5 +506,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-
+    public void deleteFiles(Uri path){
+        File delete = new File(path.getPath());
+        if (delete.exists()) {
+            if (delete.delete()) {
+                System.out.println("file Deleted :" +path.getPath());
+            } else {
+                System.out.println("file not Deleted :" + path.getPath());
+            }
+        }
+    }
 }
