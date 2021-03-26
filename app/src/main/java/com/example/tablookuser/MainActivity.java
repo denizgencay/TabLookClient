@@ -75,6 +75,9 @@ public class MainActivity extends AppCompatActivity {
         getWindow().getDecorView().setSystemUiVisibility(8);
         setContentView(R.layout.activity_main);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        System.out.println(getFilesDir().toString() + "fileeDirec" );
+        System.out.println(getCacheDir().toString() + "fileeCache" );
+        System.out.println(getExternalCacheDir().toString() + "fileeExtCache" );
         firebaseFirestore = FirebaseFirestore.getInstance();
         firebaseStorage = FirebaseStorage.getInstance();
         storageReference = firebaseStorage.getReference();
@@ -97,10 +100,12 @@ public class MainActivity extends AppCompatActivity {
                    if(currentMedia.type == 0){
                        DocumentReference documentReference = firebaseFirestore.collection("images").document(currentMedia.id);
                        documentReference.update("counter", FieldValue.increment(1));
+                       Toast.makeText(MainActivity.this, currentMedia.phoneNumber, Toast.LENGTH_LONG).show();
                        contact.setEnabled(false);
                    }else{
                        DocumentReference documentReference = firebaseFirestore.collection("videos").document(currentMedia.id);
                        documentReference.update("counter", FieldValue.increment(1));
+                       Toast.makeText(MainActivity.this, currentMedia.phoneNumber, Toast.LENGTH_LONG).show();
                        contact.setEnabled(false);
                    }
                }
@@ -182,6 +187,7 @@ public class MainActivity extends AppCompatActivity {
         {
             Media media = mediaArrayListCopy.get(counter);
             currentMedia = media;
+            System.out.println(currentMedia.mediaUri + "currentMediaUri");
             if (media.type == 0)
             {
                 Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
@@ -216,6 +222,7 @@ public class MainActivity extends AppCompatActivity {
                         imageView.setVisibility(View.INVISIBLE);
                         videoView.setVisibility(View.VISIBLE);
                         videoView.setVideoURI(media.mediaUri);
+                        System.out.println(media.mediaUri + "mediaUriBurda");
                         contact.setEnabled(true);
                         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
                         retriever.setDataSource(getApplicationContext(),media.mediaUri);
@@ -343,43 +350,48 @@ public class MainActivity extends AppCompatActivity {
                             for (String x : imageIds )
                             {
                                 oldImageIds.add(x);
+                                String path = x + ".jpg";
                                 String link = "images/" + x;
                                 StorageReference newRef = storageReference.child(link);
-                                File localFile = null;
-                                try
-                                {
-                                    localFile = File.createTempFile(x, ".jpg");
-                                    imageUri = Uri.fromFile(localFile);
-                                    System.out.println(imageUri + "localFileImageUri");
-                                    Media newImage = new Media(x,0,imageUri);
+                                File localFile = new File(getFilesDir(),path);
+                                imageUri = Uri.fromFile(localFile);
+                                System.out.println(imageUri + "localFileImageUri");
+                                Media newImage = new Media(x,0,imageUri);
+                                if (!localFile.exists()){
+                                    System.out.println("iYok");
                                     DocumentReference documentReference = firebaseFirestore.collection("images").document(newImage.id);
                                     documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                                         @Override
                                         public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                            String phoneNumber = documentSnapshot.get("name").toString();
+                                            String phoneNumber = documentSnapshot.get("phoneNumber").toString();
                                             newImage.setPhoneNumber(phoneNumber);
                                             mediaArrayList.add(newImage);
                                         }
                                     });
-
+                                    newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                        @Override
+                                        public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                            System.out.println("Image is downloaded.");
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception exception) {
+                                            System.out.println("Image cannot be downloaded.");
+                                        }
+                                    });
+                                }else{
+                                    System.out.println("iVAr");
+                                    DocumentReference documentReference = firebaseFirestore.collection("images").document(newImage.id);
+                                    documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                                        @Override
+                                        public void onSuccess(DocumentSnapshot documentSnapshot) {
+                                            String phoneNumber = documentSnapshot.get("phoneNumber").toString();
+                                            newImage.setPhoneNumber(phoneNumber);
+                                            mediaArrayList.add(newImage);
+                                        }
+                                    });
                                 }
-                                catch (IOException e)
-                                {
-                                    e.printStackTrace();
-                                }
-                                newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-                                    @Override
-                                    public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                                        System.out.println("Image is downloaded.");
-                                    }
-                                }).addOnFailureListener(new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception exception) {
-                                        System.out.println("Image cannot be downloaded.");
-                                    }
-                                });
                             }
-
 
                             if(!mediaArrayList.isEmpty()){
                                 if(databaseImageArrayList.isEmpty()){
@@ -426,45 +438,49 @@ public class MainActivity extends AppCompatActivity {
                             }
                             for (String x : videoIds) {
                                 oldVideoIds.add(x);
+                                String path = x + ".mp4";
                                 String link = "videos/" + x;
                                 StorageReference newRef = storageReference.child(link);
-                                File localFile = null;
-                                try {
-                                    localFile = File.createTempFile(x, ".mp4");
-                                    videoUri = Uri.fromFile(localFile);
-                                    Media newVideo = new Media(x, 1, videoUri);
-
+                                File localFile = new File(getFilesDir(),path);
+                                videoUri = Uri.fromFile(localFile);
+                                Media newVideo = new Media(x, 1, videoUri);
+                                if(!localFile.exists()){
+                                    System.out.println("VideoYok");
                                     DocumentReference documentReference = firebaseFirestore.collection("videos").document(newVideo.id);
                                     documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                                         @Override
                                         public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                            String phoneNumber = documentSnapshot.get("name").toString();
+                                            String phoneNumber = documentSnapshot.get("phoneNumber").toString();
                                             newVideo.setPhoneNumber(phoneNumber);
                                             mediaArrayList.add(newVideo);
-
                                         }
                                     });
-
-                                } catch (IOException e) {
-                                    e.printStackTrace();
+                                    newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                        @Override
+                                        public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                            System.out.println("Video is downloaded.");
+                                            videoCounter++;
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception exception) {
+                                            System.out.println("Video cannot be downloaded.");
+                                        }
+                                    });
+                                }else{
+                                    DocumentReference documentReference = firebaseFirestore.collection("videos").document(newVideo.id);
+                                    documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                                        @Override
+                                        public void onSuccess(DocumentSnapshot documentSnapshot) {
+                                            String phoneNumber = documentSnapshot.get("phoneNumber").toString();
+                                            newVideo.setPhoneNumber(phoneNumber);
+                                            mediaArrayList.add(newVideo);
+                                            System.out.println("VideoVar");
+                                            videoCounter++;
+                                        }
+                                    });
                                 }
-                                newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-
-                                    @Override
-                                    public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                                        System.out.println("Video is downloaded.");
-                                        videoCounter++;
-                                    }
-
-                                }).addOnFailureListener(new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception exception) {
-                                        System.out.println("Video cannot be downloaded.");
-                                    }
-
-                                });
-
-                    }
+                            }
                             if(!mediaArrayList.isEmpty()){
                                 if(databaseVideoArrayList.isEmpty()){
                                     for(int x = 0 ; x < mediaArrayList.size() ; x++){
@@ -485,7 +501,6 @@ public class MainActivity extends AppCompatActivity {
                                         }
                                     }
                                 }
-
                             }
                         } else {
                             Log.d("ana","hata");
@@ -494,18 +509,6 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-    public void printArray(String location, ArrayList<Media> array)
-    {
-        if (!array.isEmpty())
-        {
-            for (int i = 0; i < array.size() ; i++)
-            {
-                System.out.println(array.get(i).mediaUri+location+"uri");
-
-            }
-        }
-
-    }
     public void deleteFiles(Uri path){
         File delete = new File(path.getPath());
         if (delete.exists()) {
