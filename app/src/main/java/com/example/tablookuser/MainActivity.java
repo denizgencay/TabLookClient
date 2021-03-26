@@ -36,6 +36,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -91,7 +92,17 @@ public class MainActivity extends AppCompatActivity {
         contact.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+               if(currentMedia != null){
+                   if(currentMedia.type == 0){
+                       DocumentReference documentReference = firebaseFirestore.collection("images").document(currentMedia.id);
+                       documentReference.update("counter", FieldValue.increment(1));
+                       contact.setEnabled(false);
+                   }else{
+                       DocumentReference documentReference = firebaseFirestore.collection("videos").document(currentMedia.id);
+                       documentReference.update("counter", FieldValue.increment(1));
+                       contact.setEnabled(false);
+                   }
+               }
             }
         });
 
@@ -169,6 +180,7 @@ public class MainActivity extends AppCompatActivity {
         if (!mediaArrayListCopy.isEmpty())
         {
             Media media = mediaArrayListCopy.get(counter);
+            currentMedia = media;
             if (media.type == 0)
             {
                 Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
@@ -179,6 +191,7 @@ public class MainActivity extends AppCompatActivity {
                         imageView.setImageURI(media.mediaUri);
                         videoView.setVisibility(View.INVISIBLE);
                         imageView.setVisibility(View.VISIBLE);
+                        contact.setEnabled(true);
                         new java.util.Timer().schedule(
                                 new java.util.TimerTask() {
                                     @Override
@@ -202,6 +215,7 @@ public class MainActivity extends AppCompatActivity {
                         imageView.setVisibility(View.INVISIBLE);
                         videoView.setVisibility(View.VISIBLE);
                         videoView.setVideoURI(media.mediaUri);
+                        contact.setEnabled(true);
                         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
                         retriever.setDataSource(getApplicationContext(),media.mediaUri);
                         long secondDuration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
