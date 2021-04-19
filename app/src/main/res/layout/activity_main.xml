@@ -11,41 +11,99 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.01"/>
+        app:layout_constraintGuide_percent="0.001"/>
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline10"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.99" />
+        app:layout_constraintGuide_percent="0.999" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline11"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.01" />
+        app:layout_constraintGuide_percent="0.001" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline12"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.99" />
+        app:layout_constraintGuide_percent="0.999" />
 
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/middle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.5"/>
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/buttonTop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.92"/>
+        app:layout_constraintGuide_percent="0.85"/>
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/secondButtonTop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.88"/>
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/secondButtonBottom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.97"/>
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/textTop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.885"/>
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/buttonLeft"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.05" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/secondButtonLeft"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.25" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/secondButtonRight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.75" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/buttonRight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.95" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/textLeft"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.30" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/textRight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.8" />
+
 
     <ImageView
         android:visibility="invisible"
@@ -54,25 +112,58 @@
         android:layout_height="0dp"
         app:layout_constraintLeft_toRightOf="@id/guideline11"
         app:layout_constraintRight_toLeftOf="@id/guideline12"
-        app:layout_constraintBottom_toTopOf="@id/buttonTop"
-        app:layout_constraintTop_toBottomOf="@id/guideline9"/>
+        app:layout_constraintBottom_toTopOf="@id/guideline10"
+        app:layout_constraintTop_toBottomOf="@id/guideline9"
+        android:scaleType="fitXY"/>
 
-    <VideoView  android:visibility="invisible"
+    <VideoView
+        android:visibility="invisible"
         android:id="@+id/videoView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintLeft_toRightOf="@id/guideline11"
         app:layout_constraintRight_toLeftOf="@id/guideline12"
-        app:layout_constraintBottom_toTopOf="@id/buttonTop"
-        app:layout_constraintTop_toBottomOf="@id/guideline9" />
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
+        app:layout_constraintBottom_toTopOf="@id/guideline10"
+        app:layout_constraintTop_toBottomOf="@id/guideline9"
+        />
+
+    <ImageView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:id="@+id/contact"
         android:text="Contact"
+        android:background="@drawable/contact_button"
         app:layout_constraintTop_toBottomOf="@id/buttonTop"
-        app:layout_constraintLeft_toRightOf="@id/guideline11"
-        app:layout_constraintRight_toLeftOf="@id/guideline12"
+        app:layout_constraintLeft_toRightOf="@id/buttonLeft"
+        app:layout_constraintRight_toLeftOf="@id/buttonRight"
         app:layout_constraintBottom_toTopOf="@id/guideline10"
+        android:scaleType="fitXY"
         />
+
+    <ImageView
+        android:background="@drawable/contact_toast_button"
+        android:id="@+id/contactInfo"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clickable="false"
+        app:layout_constraintTop_toBottomOf="@id/secondButtonTop"
+        app:layout_constraintLeft_toRightOf="@id/secondButtonLeft"
+        app:layout_constraintRight_toLeftOf="@id/secondButtonRight"
+        app:layout_constraintBottom_toTopOf="@id/secondButtonBottom"
+        android:visibility="invisible"/>
+
+    <TextView
+        android:id="@+id/contactInfoText"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="invisible"
+        android:textStyle="bold"
+        android:textSize="18.5sp"
+        android:textColor="@color/white"
+        app:layout_constraintLeft_toRightOf="@id/textLeft"
+        app:layout_constraintRight_toLeftOf="@id/textRight"
+        app:layout_constraintTop_toBottomOf="@id/textTop"
+        app:layout_constraintBottom_toTopOf="@id/guideline10"/>
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>

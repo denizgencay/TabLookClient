@@ -21,12 +21,14 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.PowerManager;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
@@ -56,13 +58,15 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseStorage firebaseStorage;
     private FirebaseFirestore firebaseFirestore;
     private StorageReference storageReference;
-    private ImageView imageView;
+    private ImageView imageView, contact, contactInfo;
     private VideoView videoView;
     private Uri imageUri, videoUri;
     private ArrayList<String> imageIds, videoIds, oldImageIds, oldVideoIds,databaseImageArrayList,databaseVideoArrayList;
     private ArrayList<Media> mediaArrayList;
-    private Button contact;
     private Media currentMedia;
+    private TextView contactInfoText;
+
+
     int counter = 0;
     int videoCounter = 0;
     long duration = 60000;
@@ -74,7 +78,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         getWindow().getDecorView().setSystemUiVisibility(8);
         setContentView(R.layout.activity_main);
+        View decorView = getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE;
+        decorView.setSystemUiVisibility(uiOptions);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        contactInfoText = findViewById(R.id.contactInfoText);
+        contactInfo = findViewById(R.id.contactInfo);
         firebaseFirestore = FirebaseFirestore.getInstance();
         firebaseStorage = FirebaseStorage.getInstance();
         storageReference = firebaseStorage.getReference();
@@ -94,16 +104,23 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                if(currentMedia != null){
+
                    if(currentMedia.type == 0){
                        DocumentReference documentReference = firebaseFirestore.collection("images").document(currentMedia.id);
-                       documentReference.update("counter", FieldValue.increment(1));
-                       Toast.makeText(MainActivity.this, currentMedia.phoneNumber, Toast.LENGTH_LONG).show();
+                       contactInfoText.setText(currentMedia.phoneNumber);
                        contact.setEnabled(false);
+                       contact.setVisibility(View.INVISIBLE);
+                       contactInfoText.setVisibility(View.VISIBLE);
+                       contactInfo.setVisibility(View.VISIBLE);
+
                    }else{
                        DocumentReference documentReference = firebaseFirestore.collection("videos").document(currentMedia.id);
                        documentReference.update("counter", FieldValue.increment(1));
-                       Toast.makeText(MainActivity.this, currentMedia.phoneNumber, Toast.LENGTH_LONG).show();
+                       contactInfoText.setText(currentMedia.phoneNumber);
                        contact.setEnabled(false);
+                       contact.setVisibility(View.INVISIBLE);
+                       contactInfoText.setVisibility(View.VISIBLE);
+                       contactInfo.setVisibility(View.VISIBLE);
                    }
                }
             }
@@ -122,12 +139,29 @@ public class MainActivity extends AppCompatActivity {
                 },
                 10000,10000
         );
+        t.schedule(
+                new java.util.TimerTask() {
 
+                    @Override
+                    public void run() {
+                        Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
+                        Runnable myRunnable = new Runnable() {
+                            @Override
+                            public void run() {
+                                View decorView = getWindow().getDecorView();
+                                int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE;
+                                decorView.setSystemUiVisibility(uiOptions);
+                            }
+                        };
+                        mainHandler.post(myRunnable);       //To control views on main thread
+                    }
+                },
+                5000,5000
+        );
         t.schedule(
                 new java.util.TimerTask() {
                     @Override
                     public void run() {
-
                         getImagesFromStorage();
                         getVideosFromStorage();
                     }
@@ -183,75 +217,105 @@ public class MainActivity extends AppCompatActivity {
         if (!mediaArrayListCopy.isEmpty())
         {
             Media media = mediaArrayListCopy.get(counter);
-            currentMedia = media;
-            System.out.println(currentMedia.mediaUri + "currentMediaUri");
-            if (media.type == 0)        //Media type is image
-            {
-                Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
-                Runnable myRunnable = new Runnable() {
+            String path = media.mediaUri.getPath();
+            File localFile = new File(path);
+            if(localFile.isFile()){
+                System.out.println("fileEntered");
+                currentMedia = media;
+                System.out.println(currentMedia.mediaUri + "currentMediaUri");
+                if (media.type == 0)        //Media type is image
+                {
+                    Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
+                    Runnable myRunnable = new Runnable() {
+                        @Override
+                        public void run() {
 
-                    @Override
-                    public void run() {
-                        imageView.setImageURI(media.mediaUri);
-                        videoView.setVisibility(View.INVISIBLE);
-                        imageView.setVisibility(View.VISIBLE);
-                        contact.setEnabled(true);
-                        new java.util.Timer().schedule(
-                                new java.util.TimerTask() {
+                            imageView.setImageURI(media.mediaUri);
+                            videoView.setVisibility(View.INVISIBLE);
+                            imageView.setVisibility(View.VISIBLE);
+                            contactInfoText.setVisibility(View.INVISIBLE);
+                            contactInfo.setVisibility(View.INVISIBLE);
+                            contact.setEnabled(true);
+                            contact.setVisibility(View.VISIBLE);
+
+                            new java.util.Timer().schedule(
+                                    new java.util.TimerTask() {
+                                        @Override
+                                        public void run() {
+                                            skip();     // Chancing mediaArrayList index for getting other midea file
+                                            play();     // The function runs recursively for the slideView
+                                        }
+                                    },
+                                    duration
+                            );
+                        }
+                    };
+                    mainHandler.post(myRunnable);       //To control views on main thread
+                }
+                else if (media.type == 1 && videoCounter > 0)
+                {
+                    Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
+                    Runnable myRunnable = new Runnable() {
+                        @Override
+                        public void run() {
+                            String path = media.mediaUri.getPath();
+                            File localFile = new File(path);
+                            if(localFile.isFile()){
+                                imageView.setVisibility(View.INVISIBLE);//To show videoView
+                                videoView.setVisibility(View.VISIBLE);      //To show videoView
+                                videoView.setVideoURI(media.mediaUri);      //Giving videoView to video path in internal storage.
+                                contactInfo.setVisibility(View.INVISIBLE);
+                                contactInfoText.setVisibility(View.INVISIBLE);
+                                contact.setEnabled(true);
+                                contact.setVisibility(View.VISIBLE);              //To get add statistics
+                                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                                retriever.setDataSource(getApplicationContext(),media.mediaUri);
+                                long secondDuration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)); //It takes the video time to show the video image
+                                retriever.release();
+                                videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                     @Override
-                                    public void run() {
-                                        skip();     // Chancing mediaArrayList index for getting other midea file
-                                        play();     // The function runs recursively for the slideView
-                                    }
-                                },
-                                duration
-                        );
-                    }
-                };
-                mainHandler.post(myRunnable);       //To control views on main thread
-            }
-            else if (media.type == 1 && videoCounter > 0)
-            {
-                Handler mainHandler = new Handler(getApplicationContext().getMainLooper());
-                Runnable myRunnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        imageView.setVisibility(View.INVISIBLE);    //To show videoView
-                        videoView.setVisibility(View.VISIBLE);      //To show videoView
-                        videoView.setVideoURI(media.mediaUri);      //Giving videoView to video path in internal storage.
-                        contact.setEnabled(true);                   //To get add statistics
-                        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-                        retriever.setDataSource(getApplicationContext(),media.mediaUri);
-                        long secondDuration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)); //It takes the video time to show the video image
-
-                        retriever.release();
-
-                        videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                            @Override
-                            public void onPrepared(MediaPlayer mp) {
-
-                                videoView.start();
-                                new java.util.Timer().schedule(
-                                        new java.util.TimerTask() {
+                                    public void onPrepared(MediaPlayer mp) {
+                                        videoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
                                             @Override
-                                            public void run() {
+                                            public boolean onError(MediaPlayer mp, int what, int extra) {
+                                                Log.d("videoNotPlaying", "setOnErrorListener ");
                                                 skip();
                                                 play();
+                                                return true;
                                             }
-                                        },
-                                        secondDuration
-                                );
+                                        });
+                                        videoView.start();
+                                        new java.util.Timer().schedule(
+                                                new java.util.TimerTask() {
+                                                    @Override
+                                                    public void run() {
+                                                        skip();
+                                                        play();
+                                                    }
+                                                },
+                                                secondDuration
+                                        );
+                                    }
+                                });
+                            }else{
+                                skip();
+                                play();
                             }
-                        });
-                    }
-                };
-                mainHandler.post(myRunnable);
+
+
+                        }
+                    };
+                    mainHandler.post(myRunnable);
+                }else{
+                    skip();
+                    play();
+                }
             }else{
+                System.out.println("fileEnteredDosent");
                 skip();
                 play();
             }
         }else{
-
             new java.util.Timer().schedule(
                     new java.util.TimerTask() {
                         @Override
@@ -260,8 +324,10 @@ public class MainActivity extends AppCompatActivity {
                             Runnable myRunnable = new Runnable() {
                                 @Override
                                 public void run() {
+
                                     imageView.setVisibility(View.INVISIBLE);
                                     videoView.setVisibility(View.INVISIBLE);
+
                                 }
                             };
                             mainHandler.post(myRunnable);
@@ -360,9 +426,16 @@ public class MainActivity extends AppCompatActivity {
                                     documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                                         @Override
                                         public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                            String phoneNumber = documentSnapshot.get("phoneNumber").toString();
-                                            newImage.setPhoneNumber(phoneNumber);
-                                            mediaArrayList.add(newImage);
+                                            if(documentSnapshot.get("phoneNumber") != null ){
+                                                String phoneNumber = documentSnapshot.get("phoneNumber").toString();
+                                                newImage.setPhoneNumber(phoneNumber);
+                                                mediaArrayList.add(newImage);
+                                            }else{
+                                                String phone = "No phone number";
+                                                newImage.setPhoneNumber(phone);
+                                                mediaArrayList.add(newImage);
+                                            }
+
                                         }
                                     });
                                     newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
@@ -382,9 +455,16 @@ public class MainActivity extends AppCompatActivity {
                                     documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                                         @Override
                                         public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                            String phoneNumber = documentSnapshot.get("phoneNumber").toString();
-                                            newImage.setPhoneNumber(phoneNumber);
-                                            mediaArrayList.add(newImage);
+                                            if(documentSnapshot.get("phoneNumber") != null){
+                                                String phoneNumber = documentSnapshot.get("phoneNumber").toString();
+                                                newImage.setPhoneNumber(phoneNumber);
+                                                mediaArrayList.add(newImage);
+                                            }else{
+                                                String phone = "No phone number";
+                                                newImage.setPhoneNumber(phone);
+                                                mediaArrayList.add(newImage);
+                                            }
+
                                         }
                                     });
                                 }
@@ -445,9 +525,16 @@ public class MainActivity extends AppCompatActivity {
                                     documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                                         @Override
                                         public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                            String phoneNumber = documentSnapshot.get("phoneNumber").toString();
-                                            newVideo.setPhoneNumber(phoneNumber);
-                                            mediaArrayList.add(newVideo);
+                                            if(documentSnapshot.get("phoneNumber") != null){
+                                                String phoneNumber = documentSnapshot.get("phoneNumber").toString();
+                                                newVideo.setPhoneNumber(phoneNumber);
+                                                mediaArrayList.add(newVideo);
+                                            }else{
+                                                String phone = "No phone number";
+                                                newVideo.setPhoneNumber(phone);
+                                                mediaArrayList.add(newVideo);
+                                            }
+
                                         }
                                     });
                                     newRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
@@ -467,11 +554,19 @@ public class MainActivity extends AppCompatActivity {
                                     documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                                         @Override
                                         public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                            String phoneNumber = documentSnapshot.get("phoneNumber").toString();
-                                            newVideo.setPhoneNumber(phoneNumber);
-                                            mediaArrayList.add(newVideo);
-                                            System.out.println("VideoVar");
-                                            videoCounter++;
+                                            if(documentSnapshot.get("phoneNumber") != null){
+                                                String phoneNumber = documentSnapshot.get("phoneNumber").toString();
+                                                newVideo.setPhoneNumber(phoneNumber);
+                                                mediaArrayList.add(newVideo);
+                                                System.out.println("VideoVar");
+                                                videoCounter++;
+                                            }else{
+                                                String phone = "No phoneNumber";
+                                                newVideo.setPhoneNumber(phone);
+                                                mediaArrayList.add(newVideo);
+                                                videoCounter++;
+                                            }
+
                                         }
                                     });
                                 }
